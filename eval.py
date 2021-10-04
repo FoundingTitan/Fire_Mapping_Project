@@ -37,7 +37,7 @@ def get_dataset(img_dir, mask_dir):
         transforms.ToTensor()
         ])
 
-    return FireDataset(img_dir, mask_dir, transform_img, transform_mask)
+    return FireDataset(img_dir, mask_dir, transform_img, transform_mask, return_name=True)
 
 # +
 def evaluate(args, model, test_dataloader, cutoff):
@@ -49,7 +49,7 @@ def evaluate(args, model, test_dataloader, cutoff):
     ppvs = []
     npvs = []
 
-    for step, (images, masks) in enumerate(test_dataloader):
+    for step, (images, masks, names) in enumerate(test_dataloader):
 
         if args.cuda:
             images = images.cuda(args.device_id)
@@ -68,11 +68,25 @@ def evaluate(args, model, test_dataloader, cutoff):
             #Save the eval output into images
             if not os.path.exists(args.save_dir):
                 os.makedirs(args.save_dir)
-            img_name = step
-            img_savename = join(args.save_dir, str(img_name)+'_'+str(cutoff)+'.png')
+            # img_name = step
+            img_name = names[0]
+            print("Saving prediction for",img_name)
+            img_savename = join(args.save_dir, str(img_name) + '.png')
             output_mask_single = np.squeeze(output_masks)
             # print(output_mask_single.shape)
-            Image.fromarray(output_mask_single, mode='L').save(img_savename)
+
+            img = Image.fromarray(np.uint8(output_mask_single * 255) , 'L')
+            img.save(img_savename)
+            # Image.fromarray(output_mask_single, mode='L').save(img_savename)
+
+            #Save the masks as well, as they are already resized, so its good for visualization
+            resized_mask = np.squeeze(masks)
+            resized_mask_img = Image.fromarray(np.uint8(resized_mask * 255) , 'L')
+            mask_savedir = "test_resized_masks"
+            if not os.path.exists(mask_savedir):
+                os.makedirs(mask_savedir)
+            mask_img_savename = join(mask_savedir, str(img_name) + '.png')
+            resized_mask_img.save(mask_img_savename)
             
             #Scoring
 
@@ -107,6 +121,7 @@ if __name__=="__main__":
 
     parser.add_argument('--trained_model', type=str, default='trained_model_attn_unet', help='Trained model')
     parser.add_argument('--net', type=str, default='attn_unet', help='Model to train: unet|attn_unet')
+    parser.add_argument('--cutoff', type=float, default=0.3, help='Model cutoff')
     parser.add_argument('--save_dir', type=str, default='eval_predicted_masks', help='Directory to save prediction')
 
     parser.add_argument('--device_id', type=int, default=0, help='GPU Device ID number if gpu is avaliable')
@@ -118,12 +133,17 @@ if __name__=="__main__":
     args.cuda = True if torch.cuda.is_available() else False
     print("Cuda",args.cuda)
 
+    if args.cuda:
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+
     # Set seed
     set_seed(args)
 
     # Get datasets
     test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir)
-    test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     #Model
     if args.net == 'unet':
@@ -131,19 +151,14 @@ if __name__=="__main__":
     if args.net == 'attn_unet':
         model = AttU_Net(img_ch=1, output_ch=1)
 
-    model.load_state_dict(torch.load(args.trained_model))
+    model.load_state_dict(torch.load(args.trained_model, map_location=device))
 
     if args.cuda:
         model.cuda(args.device_id)
 
-    # cutoffs = [i for i in range(0, 1, 0.05)]
-    cutoffs = np.arange(0.3, 0.9, 0.05)
-    print("Cutoff being tested:", cutoffs)
-
-    for cutoff in cutoffs:
-        eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv = evaluate(args, model, test_dataloader, cutoff)
-        print("Cutoff %.2f, Eval: loss %.3f, Sens %.3f, Spec %.3f, ppv %.3f, npv %.3f" \
-                  %(cutoff, eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv))
+    eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv = evaluate(args, model, test_dataloader, args.cutoff)
+    print("Cutoff %.2f, Eval: loss %.3f, Sens %.3f, Spec %.3f, ppv %.3f, npv %.3f" \
+              %(args.cutoff, eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv))
 
 
 

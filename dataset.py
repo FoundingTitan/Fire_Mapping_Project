@@ -4,13 +4,14 @@ from torch.utils.data import Dataset
 
 class FireDataset(Dataset) :
     
-    def __init__(self, img_dir, mask_dir, transform_img, transform_mask) :
+    def __init__(self, img_dir, mask_dir, transform_img, transform_mask, return_name=False) :
         
         self.img_dir = img_dir
         self.mask_dir = mask_dir
         self.img_names = os.listdir(self.img_dir)
         self.transform_img = transform_img
         self.transform_mask = transform_mask
+        self.return_name = return_name
     
     def __len__(self) :
         return len(self.img_names)
@@ -28,5 +29,8 @@ class FireDataset(Dataset) :
 
         img = self.transform_img(img)
         mask = self.transform_mask(mask)
+
+        if self.return_name:
+            return img, mask, img_name.split('.')[0]
         
         return img, mask
