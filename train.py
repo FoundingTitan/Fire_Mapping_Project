@@ -21,21 +21,8 @@ def set_seed(args):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-def get_dataset(img_dir, mask_dir):
-
-    #Need to add more transforms like random flipping, cropping, image saturation change
-    transform_img = transforms.Compose([
-        transforms.Resize([256,256]), #Resize the input image to this size
-        transforms.ToTensor()
-        #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    transform_mask = transforms.Compose([
-        transforms.Resize([256,256]),
-        transforms.ToTensor()
-        ])
-
-    return FireDataset(img_dir, mask_dir, transform_img, transform_mask)
+def get_dataset(img_dir, mask_dir, transform_mode='basic'):
+    return FireDataset(img_dir, mask_dir, transform_mode)
 
 # +
 def evaluate(args, model, test_dataloader):
@@ -115,6 +102,7 @@ def train(args, train_dataloader, test_dataloader):
     print("Model :", args.net)
     print("Cutoff :", args.cutoff)
     print("Train Dataloader size :",len(train_dataloader))
+    print("Transform mode :",args.transform_mode)
     print("Batch size :", batch_size)
     print("Epochs :",epochs)
     print("Begin Training")
@@ -135,6 +123,7 @@ def train(args, train_dataloader, test_dataloader):
             output_masks = model(images)
             output_masks = torch.sigmoid(output_masks)
             loss = criterion(output_masks, masks)
+            # print(loss)
 
             loss.backward()
             optimizer.step()
@@ -149,10 +138,11 @@ def train(args, train_dataloader, test_dataloader):
             print("Epoch %d, Loss %.3f, Eval: loss %.3f, Sens %.3f, Spec %.3f, ppv %.3f, npv %.3f" \
                   %(epoch, current_epoch_loss, eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv))
 
-            #Save the model with minimun evaluation sensitivity
-            if epoch > 10 and eval_sens != 1.0 and eval_sens < best_eval_sens:
+            #Save the model with minimun evaluation sensitivity :
+            if epoch > 10 and eval_sens != 1.0 and eval_sens > best_eval_sens:
                 # Save the model
-                torch.save(model.state_dict(), 'trained_model_'+str(args.net))
+                print("Saving epoch %d model"%(epoch))
+                torch.save(model.state_dict(), 'trained_model_'+str(epoch)+'_'+str(args.net))
                 best_eval_sens = eval_sens
 
 
@@ -172,8 +162,9 @@ if __name__=="__main__":
     parser.add_argument('--epochs', type=int, default=100, help='Number training epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
     parser.add_argument('--cutoff', type=float, default=0.30, help='Cutoff')
-    parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate for optimizers')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate for optimizers')
     parser.add_argument('--log_interval', type=int, default=1, help='Print loss values every log_interval epochs.')
+    parser.add_argument('--transform_mode', type=str, default='basic', help='basic | crop_hflip_vflip')
 
     parser.add_argument('--device_id', type=int, default=0, help='GPU Device ID number if gpu is avaliable')
     parser.add_argument("--seed", type=int, default=10, help="random seed for initialization")
@@ -188,8 +179,8 @@ if __name__=="__main__":
     set_seed(args)
 
     # Get datasets
-    train_dataset = get_dataset(args.train_img_dir, args.train_mask_dir)
-    test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir)
+    train_dataset = get_dataset(args.train_img_dir, args.train_mask_dir, args.transform_mode)
+    test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir, args.transform_mode)
 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)
