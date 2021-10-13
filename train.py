@@ -11,6 +11,7 @@ from torch import FloatTensor
 # import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
+from sklearn.metrics import roc_auc_score
 
 from net.unet import U_Net
 from net.attention_unet import AttU_Net
@@ -21,8 +22,9 @@ def set_seed(args):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-def get_dataset(img_dir, mask_dir, transform_mode='basic'):
-    return FireDataset(img_dir, mask_dir, transform_mode)
+def get_dataset(img_dir, mask_dir, transform_mode, transform_types, mode):
+    dataset_class = FireDataset(img_dir, mask_dir, transform_mode, transform_types, mode)
+    return dataset_class
 
 # +
 def evaluate(args, model, test_dataloader):
@@ -48,6 +50,7 @@ def evaluate(args, model, test_dataloader):
             eval_losses.append(loss.item())
             
             output_masks = output_masks.detach().cpu().numpy()
+            output_masks_prob = output_masks
             output_masks = np.where(output_masks > args.cutoff, 1, 0)
             masks = masks.detach().cpu().numpy()
             
@@ -57,6 +60,8 @@ def evaluate(args, model, test_dataloader):
             tn = ((output_masks == 0) & (masks == 0)).sum()
             fp = ((output_masks == 1) & (masks == 0)).sum()
             fn = ((output_masks == 0) & (masks == 1)).sum()
+
+            auc = roc_auc_score(masks, output_masks_prob)
             
 #             print("tp, tn, fp ,fn", tp, tn, fp ,fn)
             
@@ -106,6 +111,7 @@ def train(args, train_dataloader, test_dataloader):
     print("Cutoff :", args.cutoff)
     print("Train Dataloader size :",len(train_dataloader))
     print("Transform mode :",args.transform_mode)
+    print("Transform types:", args.transform_types)
     print("Batch size :", batch_size)
     print("Epochs :",epochs)
     print("Begin Training")
@@ -167,7 +173,9 @@ if __name__=="__main__":
     parser.add_argument('--cutoff', type=float, default=0.30, help='Cutoff')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate for optimizers')
     parser.add_argument('--log_interval', type=int, default=1, help='Print loss values every log_interval epochs.')
-    parser.add_argument('--transform_mode', type=str, default='basic', help='basic | crop_hflip_vflip')
+    parser.add_argument('--transform_mode', type=str, default='basic', help='basic | transform')
+    parser.add_argument('--transform_types', type=str, nargs='*', default=['crop'],
+                        help='crop, hflip, vflip')
 
     parser.add_argument('--device_id', type=int, default=0, help='GPU Device ID number if gpu is avaliable')
     parser.add_argument("--seed", type=int, default=10, help="random seed for initialization")
@@ -182,8 +190,10 @@ if __name__=="__main__":
     set_seed(args)
 
     # Get datasets
-    train_dataset = get_dataset(args.train_img_dir, args.train_mask_dir, args.transform_mode)
-    test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir, args.transform_mode)
+    train_dataset = get_dataset(args.train_img_dir, args.train_mask_dir, args.transform_mode, 
+                    transform_types=args.transform_types, mode="train")
+    test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir, "basic",
+                    transform_types=[], mode="test")
 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)

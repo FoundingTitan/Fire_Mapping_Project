@@ -9,46 +9,59 @@ import torchvision.transforms.functional as TF
 
 class FireDataset(Dataset) :
     
-    def __init__(self, img_dir, mask_dir, transform_mode, return_name=False) :
+    def __init__(self, img_dir, mask_dir, transform_mode, transform_types, mode, return_name=False) :
         
         self.img_dir = img_dir
         self.mask_dir = mask_dir
         self.img_names = os.listdir(self.img_dir)
         self.return_name = return_name
+        self.mode = mode
 
         self.transform_basic = transforms.Compose([
         transforms.Resize([256,256]), #Resize the input image to this size
         transforms.ToTensor()])
         self.transform_mode = transform_mode
-    
+        self.transform_types = transform_types
+        
+        if self.mode != "train":
+            self.transform_mode = "basic"
+
+        print("Dataset mode",self.mode,"Transform",self.transform_mode,"Transform types",self.transform_types)
+
     def __len__(self) :
         return len(self.img_names)
 
     def transform(self, image, mask):
         # Resize
+        if "crop" in self.transform_types:
+            sizes = [256, 280, 300]
+            random_size =  np.random.choice(sizes, 1)[0]
+            # print(random_size)
+            resize = transforms.Resize(size=(random_size, random_size))
+            image = resize(image)
+            mask = resize(mask)
 
-        sizes = [256, 280, 300]
-        random_size =  np.random.choice(sizes, 1)[0]
-        # print(random_size)
-        resize = transforms.Resize(size=(random_size, random_size))
-        image = resize(image)
-        mask = resize(mask)
+            # Random crop
+            i, j, h, w = transforms.RandomCrop.get_params(
+                image, output_size=(256, 256))
+            image = TF.crop(image, i, j, h, w)
+            mask = TF.crop(mask, i, j, h, w)
+        else:
+            resize = transforms.Resize(size=(256, 256))
+            image = resize(image)
+            mask = resize(mask)
 
-        # Random crop
-        i, j, h, w = transforms.RandomCrop.get_params(
-            image, output_size=(256, 256))
-        image = TF.crop(image, i, j, h, w)
-        mask = TF.crop(mask, i, j, h, w)
+        if "hflip" in self.transform_types:
+            # Random horizontal flipping
+            if random.random() > 0.5:
+                image = TF.hflip(image)
+                mask = TF.hflip(mask)
 
-        # Random horizontal flipping
-        if random.random() > 0.5:
-            image = TF.hflip(image)
-            mask = TF.hflip(mask)
-
-        # Random vertical flipping
-        if random.random() > 0.5:
-            image = TF.vflip(image)
-            mask = TF.vflip(mask)
+        if "vflip" in self.transform_types:
+            # Random vertical flipping
+            if random.random() > 0.5:
+                image = TF.vflip(image)
+                mask = TF.vflip(mask)
 
         # Transform to tensor
         image = TF.to_tensor(image)
@@ -69,7 +82,7 @@ class FireDataset(Dataset) :
         if self.transform_mode == "basic":
             img = self.transform_basic(img)
             mask = self.transform_basic(mask)
-        elif self.transform_mode == "crop_hflip_vflip":
+        elif self.transform_mode == "transform":
             img, mask = self.transform(img, mask)
 
         if self.return_name:
