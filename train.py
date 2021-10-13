@@ -33,6 +33,7 @@ def evaluate(args, model, test_dataloader):
     specificities = []
     ppvs = []
     npvs = []
+    f1s = []
 
     for step, (images, masks) in enumerate(test_dataloader):
 
@@ -63,14 +64,16 @@ def evaluate(args, model, test_dataloader):
             specificity = tn / (fp + tn)
             ppv = tp / (fp + tp)
             npv = tn / (fn + tn)
+            f1 = 2*tp/(2*tp + fp + fn)
             
             sensitivities.append(sensitivity)
             specificities.append(specificity)
             ppvs.append(ppv)
             npvs.append(npv)
+            f1s.append(f1)
 
 #     return np.mean(eval_losses)
-    return np.mean(eval_losses), np.mean(sensitivities), np.mean(specificities), np.mean(ppvs), np.mean(npvs)
+    return np.mean(eval_losses), np.mean(sensitivities), np.mean(specificities), np.mean(f1s), np.mean(ppvs), np.mean(npvs)
 
 
 # -
@@ -109,7 +112,7 @@ def train(args, train_dataloader, test_dataloader):
     model.train()
     model.zero_grad()
 
-    best_eval_sens = 9999
+    best_eval_f1 = 0.5
 
     for epoch in range(epochs):
         epoch_losses = []
@@ -134,16 +137,16 @@ def train(args, train_dataloader, test_dataloader):
         # Printing
         if epoch % log_interval == 0:
             current_epoch_loss = np.mean(epoch_losses)
-            eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv = evaluate(args, model, test_dataloader)
-            print("Epoch %d, Loss %.3f, Eval: loss %.3f, Sens %.3f, Spec %.3f, ppv %.3f, npv %.3f" \
-                  %(epoch, current_epoch_loss, eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv))
+            eval_loss, eval_sens, eval_spec, eval_f1, eval_ppv, eval_npv = evaluate(args, model, test_dataloader)
+            print("Epoch %d, Loss %.3f, Eval: Loss %.3f, Sens %.3f, Spec %.3f, F1 %.3f, PPV %.3f, NPV %.3f" \
+                  %(epoch, current_epoch_loss, eval_loss, eval_sens, eval_spec, eval_f1, eval_ppv, eval_npv))
 
             #Save the model with minimun evaluation sensitivity :
-            if epoch > 10 and eval_sens != 1.0 and eval_sens > best_eval_sens:
+            if epoch > 10 and eval_sens != 1.0 and eval_f1 > best_eval_f1:
                 # Save the model
                 print("Saving epoch %d model"%(epoch))
                 torch.save(model.state_dict(), 'trained_model_'+str(epoch)+'_'+str(args.net))
-                best_eval_sens = eval_sens
+                best_eval_f1 = eval_f1
 
 
 if __name__=="__main__":
