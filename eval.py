@@ -23,21 +23,9 @@ def set_seed(args):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-def get_dataset(img_dir, mask_dir):
-
-    #Need to add more transforms like random flipping, cropping, image saturation change
-    transform_img = transforms.Compose([
-        transforms.Resize([256,256]), #Resize the input image to this size
-        transforms.ToTensor()
-        #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    transform_mask = transforms.Compose([
-        transforms.Resize([256,256]),
-        transforms.ToTensor()
-        ])
-
-    return FireDataset(img_dir, mask_dir, transform_img, transform_mask, mode='basic', return_name=True)
+def get_dataset(img_dir, mask_dir, transform_mode, transform_types, mode):
+    dataset_class = FireDataset(img_dir, mask_dir, transform_mode, transform_types, mode, return_name=True)
+    return dataset_class
 
 # +
 def evaluate(args, model, test_dataloader, cutoff):
@@ -126,6 +114,9 @@ if __name__=="__main__":
     parser.add_argument('--net', type=str, default='attn_unet', help='Model to train: unet|attn_unet')
     parser.add_argument('--cutoff', type=float, default=0.3, help='Model cutoff')
     parser.add_argument('--save_dir', type=str, default='eval_predicted_masks', help='Directory to save prediction')
+    parser.add_argument('--transform_mode', type=str, default='basic', help='basic | transform')
+    parser.add_argument('--transform_types', type=str, nargs='*', default=['crop'],
+                        help='crop, hflip, vflip')
 
     parser.add_argument('--device_id', type=int, default=0, help='GPU Device ID number if gpu is avaliable')
     parser.add_argument("--seed", type=int, default=10, help="random seed for initialization")
@@ -145,7 +136,8 @@ if __name__=="__main__":
     set_seed(args)
 
     # Get datasets
-    test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir)
+    test_dataset = get_dataset(args.test_img_dir, args.test_mask_dir, "basic",
+                    transform_types=[], mode="test")
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     #Model
