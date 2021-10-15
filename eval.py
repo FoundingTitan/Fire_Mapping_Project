@@ -37,7 +37,7 @@ def get_dataset(img_dir, mask_dir):
         transforms.ToTensor()
         ])
 
-    return FireDataset(img_dir, mask_dir, transform_img, transform_mask, return_name=True)
+    return FireDataset(img_dir, mask_dir, transform_img, transform_mask, mode='basic', return_name=True)
 
 # +
 def evaluate(args, model, test_dataloader, cutoff):
@@ -48,6 +48,7 @@ def evaluate(args, model, test_dataloader, cutoff):
     specificities = []
     ppvs = []
     npvs = []
+    f1s = []
 
     for step, (images, masks, names) in enumerate(test_dataloader):
 
@@ -94,6 +95,7 @@ def evaluate(args, model, test_dataloader, cutoff):
             tn = ((output_masks == 0) & (masks == 0)).sum()
             fp = ((output_masks == 1) & (masks == 0)).sum()
             fn = ((output_masks == 0) & (masks == 1)).sum()
+            f1 = 2*tp/(2*tp + fp + fn)
             
 #             print("tp, tn, fp ,fn", tp, tn, fp ,fn)
             
@@ -106,9 +108,10 @@ def evaluate(args, model, test_dataloader, cutoff):
             specificities.append(specificity)
             ppvs.append(ppv)
             npvs.append(npv)
+            f1s.append(f1)
 
 #     return np.mean(eval_losses)
-    return np.mean(eval_losses), np.mean(sensitivities), np.mean(specificities), np.mean(ppvs), np.mean(npvs)
+    return np.mean(eval_losses), np.mean(sensitivities), np.mean(specificities), np.mean(f1s), np.mean(ppvs), np.mean(npvs)
 
 
 if __name__=="__main__":
@@ -156,9 +159,9 @@ if __name__=="__main__":
     if args.cuda:
         model.cuda(args.device_id)
 
-    eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv = evaluate(args, model, test_dataloader, args.cutoff)
-    print("Cutoff %.2f, Eval: loss %.3f, Sens %.3f, Spec %.3f, ppv %.3f, npv %.3f" \
-              %(args.cutoff, eval_loss, eval_sens, eval_spec, eval_ppv, eval_npv))
+    eval_loss, eval_sens, eval_spec, eval_f1, eval_ppv, eval_npv = evaluate(args, model, test_dataloader, args.cutoff)
+    print("Cutoff %.2f, Eval: Loss %.3f, Sens %.3f, Spec %.3f, F1 %.3f, PPV %.3f, NPV %.3f" \
+              %(args.cutoff, eval_loss, eval_sens, eval_spec, eval_f1, eval_ppv, eval_npv))
 
 
 
