@@ -60,8 +60,6 @@ def evaluate(args, model, test_dataloader):
             tn = ((output_masks == 0) & (masks == 0)).sum()
             fp = ((output_masks == 1) & (masks == 0)).sum()
             fn = ((output_masks == 0) & (masks == 1)).sum()
-
-            auc = roc_auc_score(masks, output_masks_prob)
             
 #             print("tp, tn, fp ,fn", tp, tn, fp ,fn)
             
