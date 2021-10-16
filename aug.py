@@ -13,9 +13,10 @@ from torch.utils.data import Dataset
 
 #Create Augmentations, with p = probability of being applied
 transform = A.Compose([
-	A.RandomCrop(width = 150, height = 150, p = 0.5),
+	A.RandomCrop(width = 100, height = 150),
 	A.HorizontalFlip(p = 0.5),
 	A.VerticalFlip(p = 0.5),
+	#A.Resize(width = 256, height = 256)
 ], p = 1.0)
 
 #change to whatever directory -> DIRECTORIES
