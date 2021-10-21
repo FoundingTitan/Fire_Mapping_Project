@@ -92,3 +92,11 @@ Example form of `--arg option`
 * Choose the `Main_train.ipynb` or `Main_Train_AUC.ipynb`.
 * Make sure the Session runtime is set to GPU (see above).
 * Run all cells.
+
+## Adding augmented images
+
+* Edit aug.py and add desired transforms at the top of the code.  This utilizes the Albumentations package
+* Determine file names during the saving stage located at the bottom of the code
+* Run aug.py
+* Copy and paste generated images located at augmented_images onto train_images
+* Do the same for generated masks, from augmented_masks onto train_masks
