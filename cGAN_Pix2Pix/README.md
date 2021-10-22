@@ -36,7 +36,7 @@ For B/W images, uncomment the `(Use for bw images)` block, and comment out the `
 
 ## Training
 
-1. Open a new colab session. Chenge the runtime to `GPU` (See the first `README.md`) of the firemapping project.
+1. Open a new colab session. Change the runtime to `GPU` (See the first `README.md`) of the firemapping project.
 
 2. Edit the config.py file to match the setup you want to use. Then run `train.py`
 
