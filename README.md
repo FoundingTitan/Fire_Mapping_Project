@@ -100,3 +100,8 @@ Example form of `--arg option`
 * Run aug.py
 * Copy and paste generated images located at augmented_images onto train_images
 * Do the same for generated masks, from augmented_masks onto train_masks
+
+## Fire Prediction
+
+* Open Wild_Fire.py with text editor to select image, image path and initial conditions
+* Run Wild_Fire.py when satified.  
