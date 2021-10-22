@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Jain
+    given-names: Anshul
+  - family-names: Abiad
+    given-names: Jonathan
+  - family-names: Yu
+    given-names: He
+  - family-names: Chang
+    given-names: Carl
+title: "Bushfire Detection and Mapping"
+date-released: 2021-10-22
+url: "https://github.com/FoundingTitan/Fire_Mapping_Project"
